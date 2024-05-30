@@ -80,7 +80,7 @@ function Page() {
       {generatingItems ? (
         <div className="mx-auto font-bold">generatingItems....</div>
       ) : (
-        <div className="mt-3 h-[80vh]">
+        <div className="mt-3 h-[70vh]">
           <div className="flex flex-col gap-y-3 items-center justify-center">
             {currentPost.map((items) => {
               return (
