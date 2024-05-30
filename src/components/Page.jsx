@@ -2,25 +2,28 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useState } from "react";
 import Items from "./Items";
+import ReadMore from "./ReadMore";
 
 function Page() {
   const [pageItems, setPageItems] = useState([]);
   const [generatingItems, setGeneratingItems] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [postPerPage, setPostPerPage] = useState(2);
-  const [editId, setEditId] = useState(-1);
+  const [editId, setEditId] = useState();
   const [namer, setNamer] = useState();
-  const [clearKeys, setClearKeys] = useState()
+  const [clearKeys, setClearKeys] = useState();
   const [editData, setEditData] = useState({
     id: editId,
-    data: {},
+    title: "",
+    body: "",
   });
 
   useEffect(() => {
     async function fetch() {
-      const response = await axios("https://api.restful-api.dev/objects");
-      const data = response.data.filter((data) => data.data !== null);
-      console.log(data);
+      const response = await axios(
+        "https://jsonplaceholder.typicode.com/posts"
+      );
+      const data = response.data.slice(1, 12);
       setPageItems(data);
       setGeneratingItems(false);
     }
@@ -31,161 +34,124 @@ function Page() {
   const firstIndex = lastIndex - postPerPage;
   const currentPost = pageItems.slice(firstIndex, lastIndex);
 
-
-const clear = ()=>{
-    clearKeys.map((u,i)=>{
-        localStorage.removeItem(`${u}`)
-      })
-}
-
-  const handleEdit = (id, data, name) => {
+  const handleEdit = (id) => {
     setEditId(id);
-    setNamer(name);
-    localStorage.setItem("data", JSON.stringify(data));
+    const currentItem = pageItems.filter((post) => {
+      return post.id == id;
+    });
+    setEditData((prev) => {
+      return { ...prev,id, title:currentItem[0].title, body:currentItem[0].body };
+    });
   };
 
   const handleChange = (e) => {
-    const data = {};
-    var name = e.target.name;
-    var value = e.target.value;
-    localStorage.setItem(`${name}`, value);
-    const localdata = localStorage.getItem("data");
-    const localdatajson = JSON.parse(localdata);
-    const keys = Object.keys(localdatajson);
-    setClearKeys(keys)
-    const val = keys.map((v, i) => {
-      return localStorage.getItem(v);
-    });
-
-    keys.forEach((k, i) => {
-      data[k] = val[i];
-    });
-
-    setEditData((prev) => {
-      return { ...prev, data, name: namer, id: editId };
-    });
-
-    console.log(editData);
+    const name = e.target.name
+    const value = e.target.value
+    setEditData((prev)=>{
+        return {...prev, [name]:value}
+    } )
   };
 
-  const handleNameChange = (e) => {
-    const name = e.target.value;
-    setEditData((prev) => {
-      return { ...prev, name, id: editId };
+  const update = async () => {
+    const response = await axios({
+      method: "put",
+      url:`https://jsonplaceholder.typicode.com/posts/${editData.id}`,
+      data: editData,
     });
+    const data = response.data
+
+    const pageObject = pageItems.filter((o)=>{
+        return o.id == editData.id
+    })
+
+    const index = pageItems.indexOf(pageObject[0])
+    pageItems[index] = data
+    setEditId()
   };
 
-  const update = async (id) => {
-
-    await axios({
-      method:'patch',
-      url:`https://api.restful-api.dev/objects/${id}`,
-      data:editData,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-  
-    });
-
-    clear()
-  };
-
-  const Delete = async (id) => {
-
-    await axios({
-      method:'delete',
-      url:`https://api.restful-api.dev/objects/${id}`,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-  
-    });
-
-    clear()
-  };
-
-  console.log(editData);
+  const handleDelete = async (id)=>{
+    setPageItems(pageItems.filter((u)=>{
+        return u.id != id
+    }))
+  }
 
   return (
     <>
-    {generatingItems? <div className="mx-auto font-bold">generatingItems....</div> : 
-     <> <div className="flex flex-col gap-y-2 items-center mt-3">
-        {currentPost.map((items, index) => {
-          const data = Object.entries(items.data).map(([key, val], index) => {
-            return (
-              <div key={index}>
-                <p className="mb-1">
+      {generatingItems ? (
+        <div className="mx-auto font-bold">generatingItems....</div>
+      ) : (
+        <div className="mt-3 h-[80vh]">
+          <div className="flex flex-col gap-y-3 items-center justify-center">
+            {currentPost.map((items) => {
+              return (
+                <>
                   {editId == items.id ? (
                     <>
-                      <b>{key}</b> :{" "}
-                      <input
-                        type="text"
-                        placeholder={val}
-                        name={key}
-                        onChange={(e) => handleChange(e)}
-                        className="text-black"
-                      />
+                      {" "}
+                      <div
+                        key={items.id}
+                        className="w-[90%] lg:w-[50%] p-3 bg-red-400 flex flex-col gap-y-3"
+                      >
+                        <input
+                          className="font-bold text-center"
+                          placeholder={items.title}
+                          value={editData.title}
+                          name="title"
+                          onChange={(e) => handleChange(e)}
+                        />
+                        <input
+                          id={items.id}
+                          name="body"
+                          placeholder={items.body}
+                          value={editData.body}
+                          onChange={(e) => handleChange(e)}
+                        />
+                      </div>
+                      <div className="flex justify-center w-[90%] lg:w-[50%] gap-x-4">
+                        <button
+                          className="border-2 p-4 bg-green-300"
+                          onClick={update}
+                        >
+                          Update
+                        </button>
+
+                        <button
+                          className="border-2 p-4 bg-red-800 text-white"
+                          onClick={()=>setEditId(0)}
+                        >
+                          cancel
+                        </button>
+                      </div>{" "}
                     </>
                   ) : (
                     <>
-                      <b>{key}</b> : <span>{val}</span>
+                      {" "}
+                      <div
+                        key={items.id}
+                        className="w-[90%] lg:w-[50%] p-3 bg-[#9e613b] rounded-md"
+                      >
+                        <h2 className="font-bold text-center text-white ">{items.title}</h2>
+                        <ReadMore id={items.id} text={items.body} />
+                      </div>
+                      <div className="border-b-1 flex justify-center w-[90%] lg:w-[50%] gap-x-4">
+                        <button
+                          className="border-2 p-4 bg-yellow-300 rounded-md"
+                          onClick={() => handleEdit(items.id)}
+                        >
+                          Edit
+                        </button>
+                        <button className="border-2 p-4 bg-red-300 rounded-md" onClick={()=>handleDelete(items.id)}>
+                          Delete
+                        </button>
+                      </div>{" "}
                     </>
                   )}
-                </p>
-              </div>
-            );
-          });
-          return (
-            <div
-              key={index}
-              className="bg-[#b9314f] w-full lg:w-[50%] flex flex-col items-center rounded-lg text-[#e1dee3]"
-            >
-              {editId == items.id ? (
-                <>
-                  <input
-                    type="text"
-                    placeholder={items.name}
-                    className="mb-1 text-black"
-                    name="name"
-                    onChange={(e) => handleNameChange(e)}
-                  />
                 </>
-              ) : (
-                <h2>{items.name}</h2>
-              )}
-
-              <div>{data}</div>
-              <div id="options " className="flex gap-x-3">
-                {editId == items.id ? (
-                  <button
-                    className="p-1 bg-green-400 text-white mb-1"
-                    onClick={()=> update(items.id)}
-                  >
-                    Update
-                  </button>
-                ) : (
-                  <>
-                    {" "}
-                    <button
-                      className="bg-yellow-500 p-1 m-1 rounded-md text-white"
-                      onClick={() =>
-                        handleEdit(items.id, items.data, items.name)
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button className="bg-red-500 p-1 m-1 rounded-md text-white"  onClick={()=> Delete(items.id)}>
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <Items
         total={pageItems.length}
@@ -194,9 +160,6 @@ const clear = ()=>{
         currentPage={currentPage}
       />
     </>
-  
-}
-</>
   );
 }
 
